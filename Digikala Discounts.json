@@ -1,0 +1,298 @@
+{
+  "name": "Digikala Discounts",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://digikala-mcp.mmdju.workers.dev/mcp",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.body.message.text }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json, text/event-stream User-Agent: digikala-mcp-client/1.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"search_digikala\",\n    \"arguments\": {\n      \"query\": \"{{ $json.body.message.text }}\"\n    }\n  }\n}\n",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -32,
+        -80
+      ],
+      "id": "248a79b0-3a7d-46c7-81d6-64c0dfa651dd",
+      "name": "HTTP - MCP Digikala"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ce8bef25-7ce2-4b49-a9be-3b3a7b3f3ade",
+              "leftValue": "={{ $json.product.discount_percent }}",
+              "rightValue": 20,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "4b180420-1c72-441a-937a-2e61636bb5f0",
+              "leftValue": "={{ $json.product.in_stock }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "af32e93e-a46e-43ad-b1e1-5f9f307f65bd",
+              "leftValue": "={{ $json.product.price_toman }}",
+              "rightValue": 5000000,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        384,
+        -48
+      ],
+      "id": "ff5072da-55da-4abd-9bfe-db3dbc2e6912",
+      "name": "Filter - محصولات واجد شرایط"
+    },
+    {
+      "parameters": {
+        "jsCode": "var items = $input.all();\nvar output = [];\n\nfor (var i = 0; i < items.length; i++) {\n  var row = items[i].json || {};\n  var p = row.product || {};\n  \n  var title = p.title || \"بدون عنوان\";\n  var price = p.price_toman ? p.price_toman.toLocaleString('fa-IR') + \" تومان\" : \"نامشخص\";\n  var discount = p.discount_percent ? p.discount_percent + \"%\" : \"بدون تخفیف\";\n  var rating = p.rating_stars ? p.rating_stars : \"ثبت نشده\";\n  var seller = p.seller || \"نامشخص\";\n  var url = p.url || \"\";\n  \n  // ساخت متن پیام جذاب و خوانا برای کاربر\n  var messageText = \n    \"📦 *محصول پیشنهادی:*\\n\" +\n    title + \"\\n\\n\" +\n    \"💰 قیمت: \" + price + \"\\n\" +\n    \"🏷 تخفیف: \" + discount + \"\\n\" +\n    \"⭐ امتیاز: \" + rating + \"\\n\" +\n    \"🏢 فروشنده: \" + seller + \"\\n\" +\n    (url ? \"🔗 [مشاهده و خرید در دیجی‌کالا](\" + url + \")\" : \"\");\n\n  output.push({\n    json: {\n      chat_id: row.chat_id,\n      text: messageText,\n      parse_mode: \"Markdown\"\n    }\n  });\n}\n\n// اگر هیچ محصولی نبود، یک پیام مناسب بده\nif (output.length === 0) {\n  var sampleRow = items.length > 0 ? items[0].json : {};\n  output.push({\n    json: {\n      chat_id: sampleRow.chat_id || 1583910231,\n      text: \"❌ متأسفانه کالایی با شرایط مشخص‌شده یافت نشد.\",\n      parse_mode: \"Markdown\"\n    }\n  });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        48
+      ],
+      "id": "5e9fedc7-55d4-4377-bde8-458f59deda36",
+      "name": "Code - Build Bale Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tapi.bale.ai/bot744830303:GYABX9oY42EVqj0FWkynlFa7Ykxb1GA29w4/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chat_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        832,
+        48
+      ],
+      "id": "54f5ca0f-9040-4ed8-b726-b85cdabef2c7",
+      "name": "HTTP - Send Message to Bale"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bale-message",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        -80
+      ],
+      "id": "83886094-90f8-4792-aa71-d193563c8652",
+      "name": "bale-message",
+      "webhookId": "c9fe3191-ebea-4064-97ce-cf38274d95ce",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        160
+      ],
+      "id": "3131d6d0-e369-402c-8e45-29983f08f7e8",
+      "name": "When clicking ‘Execute workflow’",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "url": "https://tapi.bale.ai/bot744830303:GYABX9oY42EVqj0FWkynlFa7Ykxb1GA29w4/setWebhook",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "https://63636.sevenhost.cloud/webhook-test/bale-message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        48,
+        160
+      ],
+      "id": "66ad2122-a8dd-4315-8249-f8744728164b",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "var inputItems = $input.all();\nvar raw = \"\";\n\nif (\n  inputItems.length > 0 &&\n  inputItems[0].json &&\n  typeof inputItems[0].json.data === \"string\"\n) {\n  raw = inputItems[0].json.data;\n}\n\nif (!raw) {\n  throw new Error(\n    \"متن پاسخ MCP در فیلد data پیدا نشد. ورودی HTTP - MCP Digikala را بررسی کنید.\"\n  );\n}\n\n// اطلاعات پیام را از نود وب‌هوک بگیر، نه از خود Extract-Data\nvar webhookItems = $(\"bale-message\").all();\nvar webhookJson = {};\n\nif (webhookItems.length > 0 && webhookItems[0].json) {\n  webhookJson = webhookItems[0].json;\n}\n\nvar body = webhookJson.body || {};\nvar message = body.message || {};\nvar chat = message.chat || {};\n\nvar chatId = chat.id || \"\";\nvar originalText = message.text || \"\";\n\n// پاسخ SSE را بخوان\nvar lines = raw.split(/\\r?\\n/);\nvar payload = null;\nvar parseErrors = [];\n\nfor (var i = 0; i < lines.length; i++) {\n  var line = lines[i].trim();\n\n  if (line.indexOf(\"data:\") === 0) {\n    var eventData = line.substring(5).trim();\n\n    if (!eventData || eventData === \"[DONE]\") {\n      continue;\n    }\n\n    try {\n      var eventJson = JSON.parse(eventData);\n\n      if (\n        eventJson.result &&\n        eventJson.result.content &&\n        eventJson.result.content.length > 0 &&\n        eventJson.result.content[0].text\n      ) {\n        var text = eventJson.result.content[0].text;\n        payload = JSON.parse(text);\n        break;\n      }\n    } catch (error) {\n      parseErrors.push(error.message);\n    }\n  }\n}\n\nif (!payload) {\n  throw new Error(\n    \"پاسخ محصولات از SSE استخراج نشد. \" +\n    (parseErrors.length ? \"جزئیات: \" + parseErrors.join(\" | \") : \"\")\n  );\n}\n\nif (!payload.items || !Array.isArray(payload.items)) {\n  throw new Error(\n    \"آرایهٔ items در پاسخ MCP پیدا نشد. ساختار پاسخ MCP را بررسی کنید.\"\n  );\n}\n\n// هر محصول را به یک آیتم جدا تبدیل کن\nvar output = [];\n\nfor (var j = 0; j < payload.items.length; j++) {\n  output.push({\n    json: {\n      product: payload.items[j],\n      chat_id: chatId,\n      original_text: originalText\n    }\n  });\n}\n\nif (output.length === 0) {\n  return [{\n    json: {\n      message: \"پاسخ MCP محصولی برنگرداند.\",\n      chat_id: chatId,\n      original_text: originalText\n    }\n  }];\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -80
+      ],
+      "id": "179d3912-728e-4354-8cee-5af58ac6825e",
+      "name": "Extract-Data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP - MCP Digikala": {
+      "main": [
+        [
+          {
+            "node": "Extract-Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - محصولات واجد شرایط": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Bale Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Code - Build Bale Message": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Send Message to Bale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bale-message": {
+      "main": [
+        [
+          {
+            "node": "HTTP - MCP Digikala",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract-Data": {
+      "main": [
+        [
+          {
+            "node": "Filter - محصولات واجد شرایط",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ceff8764-e8a5-4137-a1ba-69eaf321a2bc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8773fa52302f38218db8baeb0a658876d67e86a85fcb6d09904224d0cbb85d11"
+  },
+  "nodeGroups": [],
+  "id": "r9ryQbrgC2F4YMIn",
+  "tags": []
+}
